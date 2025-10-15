@@ -82,28 +82,67 @@ class App(ctk.CTk):
 			  button_func= self.search_sp).grid(row= 0, column= 1, rowspan= 2, columnspan= 6, padx= 10, pady= 10, sticky= "ew")
 	
 	def search_sp(self):
+		"""
+		Use the gbif API to search for the species entered in the Entry field
+		and create a distribution map if it does not already exist, otherwise delete
+		the existing one before creating another
+		"""
 		data = get_species_data(sp_name= self.sp_name.get())
 
 		if self.map:
 			self.clear_info_and_map()
-			self.map.grid_forget()
-			self.map.destroy()
 		self.map = MapCanvas(parent= self, data= data)
 		self.map.grid(row= 2, column= 6, rowspan= 2, columnspan= 5)
+
+		# add species info to a left panel
+		self.list_info(data)
+	
+	def list_info(self, data):
+		countries = set(data["country"])
+		latitude_range = [min(data["decimalLatitude"]), max(data["decimalLatitude"])]
+		longitude_range = [min(data["decimalLongitude"]), max(data["decimalLongitude"])]
+
+		self.sp_info = InformationDisplay(self, 
+									countries= countries, 
+									lat_range= latitude_range, 
+									lon_range= longitude_range,
+									font= self.font)
+		self.sp_info.grid(row= 2, column= 1, rowspan= 3, columnspan= 2, sticky= "nsew")
+		
 
 	def clear_info_and_map(self):
 		self.map.grid_forget()
 		self.map.destroy()
+		self.sp_info.grid_forget()
+		self.sp_info.destroy()
+
+class InformationDisplay(ctk.CTkFrame):
+	def __init__(self, parent, countries: set, lat_range: list[float], lon_range: list[float], font: tuple):
+		super().__init__(master= parent, fg_color= "cyan")
+
+		processed_data = self.preprocess_data(countries, lat_range, lon_range)
+		
+		info_title = ctk.CTkLabel(self, text= "Information", font= font).pack(expand= True, fill= "both")
+		for data in processed_data:
+			ctk.CTkLabel(self, text= data, font= font).pack(fill= "both")
+	
+	def preprocess_data(self, countries, lat_range, lon_range) -> tuple[str]:
+		country_processed = ", ".join(list(countries))
+		print(country_processed)
+		lat_processed = f"Maximum latitude: {lat_range[1]}\nMinimum latitude: {lat_range[0]}"
+		lon_processed = f"Maximum longitude: {lon_range[1]}\nMinimum longitude: {lon_range[0]}"
+
+		return (country_processed, lat_processed, lon_processed)
 
 class SimpleEntry(ctk.CTkFrame):
 	"""
 	Class that creates a frame containing a CTkLabel and a CTkEntry in a row
 	"""
 	def __init__(self, parent, entry_variable, frame_color, font, button_func):
-		super().__init__(master= parent, fg_color= "transparent")
+		super().__init__(master= parent, fg_color= frame_color)
 		ctk.CTkLabel(self, text= "Enter scientific name: ", font= font).pack(side= "left", fill= "both", padx= 10)
-		ctk.CTkEntry(self, textvariable= entry_variable, font= font).pack(side= "left", fill= "x", expand= True, padx= 10)
-		ctk.CTkButton(self, command= button_func, text= "SEARCH", font= font).pack(side= "bottom", fill= "both", expand= True)
+		ctk.CTkEntry(self, textvariable= entry_variable, font= font, width= 500).pack(side= "left", fill= "x", expand= True, padx= 10)
+		ctk.CTkButton(self, command= button_func, text= "SEARCH", font= font).pack(side= "left", fill= "both", expand= True)
 
 class MapCanvas(ctk.CTkFrame):
 	"""
