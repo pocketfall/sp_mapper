@@ -5,6 +5,8 @@ from pygbif import occurrences, maps, species
 from mpl_toolkits.basemap import Basemap
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+from threading import Thread
+from time import sleep
 
 def get_species_data(sp_name: str= None) -> dict:
 	if sp_name is None:
@@ -48,12 +50,21 @@ class App(ctk.CTk):
 		self.minsize(1000, 600)
 		self.title("Species Distribution Mapper")
 		
-		# variables
+		# data
 		self.font = ("Comic sans MS", 24, "bold")
+		self.animation_frames = ["|", "/", "--", "\\"]
 		self.sp_name = ctk.StringVar()
+		self.animation_text = ctk.StringVar()
+		self.main_frame = None
+		self.loading_frame = None 
+		self.entry_field = None
+		self.frame_idx = 0
+		self.thread_return = [None] # thread return will get the result of searching while in a thread
 
-		self.rowconfigure((0, 1, 2, 3, 4), weight= 1, uniform= "a")
-		self.columnconfigure((0, 1, 2, 3, 4, 5, 6, 7, 8, 9), weight= 1, uniform= "a")
+		self.rowconfigure(0, weight= 1, uniform= "a")
+		self.rowconfigure(1, weight= 5, uniform= "a")
+		self.columnconfigure((0, 1), weight= 1, uniform= "a")
+		self.columnconfigure(2, weight= 5, uniform= "a")
 
 		self.map = None
 		self.create_widgets()
@@ -74,12 +85,21 @@ class App(ctk.CTk):
 	
 	def create_widgets(self):
 		# layout
-		# 5 x 9 matrix where the left 4 columns are for info on the species and the right is dedicated to the distribution map
-		SimpleEntry(parent= self, 
-			  entry_variable= self.sp_name, 
-			  frame_color= "red", 
-			  font= self.font,
-			  button_func= self.search_sp).grid(row= 0, column= 1, rowspan= 2, columnspan= 6, padx= 10, pady= 10, sticky= "ew")
+		# 2x3 where the 3rd column has a weight of 5
+		if self.main_frame is None:
+			self.main_frame = ctk.CTkFrame(self, fg_color= "magenta")
+			self.main_frame.rowconfigure(0, weight= 1, uniform= "a")
+			self.main_frame.rowconfigure(1, weight= 5, uniform= "a")
+			self.main_frame.columnconfigure((0, 1), weight= 1, uniform= "a")
+			self.main_frame.columnconfigure(2, weight= 5, uniform= "a")
+			self.main_frame.pack(expand= True, fill= "both")
+
+		self.entry_field = SimpleEntry(parent= self.main_frame, 
+							entry_variable= self.sp_name, 
+							frame_color= "red", 
+							font= self.font, 
+							button_func= self.search_sp)
+		self.entry_field.grid(row= 0, column= 0, rowspan= 1, columnspan= 3, padx= 10, pady= 10, sticky= "ew")
 	
 	def search_sp(self):
 		"""
@@ -87,33 +107,74 @@ class App(ctk.CTk):
 		and create a distribution map if it does not already exist, otherwise delete
 		the existing one before creating another
 		"""
-		data = get_species_data(sp_name= self.sp_name.get())
+		# clear screen to display loading frame
+		self.clear_screen()
+		self.create_loading_screen()
+		#self.loading_frame.place(relx= .5, rely= .5, anchor= "center")
 
-		if self.map:
-			self.clear_info_and_map()
-		self.map = MapCanvas(parent= self, data= data)
-		self.map.grid(row= 2, column= 6, rowspan= 2, columnspan= 5)
+		# search the data using a thread
+		search_thread = Thread(target= self.thread_search, args= (self.sp_name.get(), self.thread_return))
+		search_thread.start()
+
+		# create a loading screen while requesting data
+		while search_thread.is_alive():
+			self.animate()
+		self.loading_frame.destroy()
+
+		# add the widgets again
+		self.create_widgets()
+
+		data = self.thread_return[0]
+		self.frame_idx = 0
+
+		# draw map when data is available
+		self.map = MapCanvas(parent= self.main_frame, data= data)
+		self.map.grid(row= 1, column= 2, padx= 5, pady= 5, sticky= "new")
 
 		# add species info to a left panel
 		self.list_info(data)
+	
+	def create_loading_screen(self):	
+		self.loading_frame = ctk.CTkFrame(self.main_frame, fg_color= "transparent")
+		loading_label = ctk.CTkLabel(self.loading_frame, textvariable= self.animation_text, font= self.font, text_color= "black")
+		loading_label.pack(expand= True, fill= "both")
+		self.loading_frame.place(relx= .5, rely= .5, anchor= "center", relheight= 1, relwidth= 1)
+	
+	def clear_screen(self):
+		for child in self.main_frame.winfo_children():
+			child.destroy()
+		self.main_frame.update()
+		print(self.main_frame.winfo_children())
+	
+	def thread_search(self, sp_name: str, return_list: list) -> None:
+		data = get_species_data(sp_name= sp_name)
+		return_list[0] = data
+
+	def animate(self):
+		self.main_frame.update()
+		sleep(.33)
+		self.frame_idx += 1
+		if self.frame_idx >= len(self.animation_frames):
+			self.frame_idx = 0
+
+		self.animation_text.set(str(self.animation_frames[self.frame_idx]))
+		print(self.animation_frames[self.frame_idx])
 	
 	def list_info(self, data):
 		countries = set(data["country"])
 		latitude_range = [min(data["decimalLatitude"]), max(data["decimalLatitude"])]
 		longitude_range = [min(data["decimalLongitude"]), max(data["decimalLongitude"])]
 
-		self.sp_info = InformationDisplay(self, 
+		self.sp_info = InformationDisplay(self.main_frame, 
 									countries= countries, 
 									lat_range= latitude_range, 
 									lon_range= longitude_range,
 									font= self.font)
-		self.sp_info.grid(row= 2, column= 1, rowspan= 3, columnspan= 2, sticky= "nsew")
+		self.sp_info.grid(row= 1, column= 0, rowspan= 1, columnspan= 2, sticky= "nsew", padx= 5, pady= 5)
 		
 
 	def clear_info_and_map(self):
-		self.map.grid_forget()
 		self.map.destroy()
-		self.sp_info.grid_forget()
 		self.sp_info.destroy()
 
 class InformationDisplay(ctk.CTkFrame):
@@ -127,7 +188,7 @@ class InformationDisplay(ctk.CTkFrame):
 			ctk.CTkLabel(self, text= data, font= font).pack(fill= "both")
 	
 	def preprocess_data(self, countries, lat_range, lon_range) -> tuple[str]:
-		country_processed = ", ".join(list(countries))
+		country_processed = "\n".join(list(countries))
 		print(country_processed)
 		lat_processed = f"Maximum latitude: {lat_range[1]}\nMinimum latitude: {lat_range[0]}"
 		lon_processed = f"Maximum longitude: {lon_range[1]}\nMinimum longitude: {lon_range[0]}"
