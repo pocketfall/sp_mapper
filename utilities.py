@@ -9,7 +9,7 @@ def get_species_data(sp_name: str= None) -> dict:
 			key = species.name_backbone(name= sp_name, rank= "species")["usageKey"]
 
 			# seach for the species and only show results with lat/lon data
-			data = occurrences.search(taxonKey= key, hasCoordinate= True, basisOfRecord= "HUMAN_OBSERVATION", limit= 300)["results"]
+			data = occurrences.search(taxonKey= key, hasCoordinate= True, limit= 500)["results"]
 			
 			# occurrences.search()["results"] datastructure: list[dict]
 			# [{occurrence1}, {occurrence2}, ... {occurrenceN}]

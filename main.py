@@ -53,7 +53,7 @@ class App(ctk.CTk):
 		# layout
 		# 2x3 where the 3rd column has a weight of 5
 		if self.main_frame is None:
-			self.main_frame = ctk.CTkFrame(self, fg_color= "magenta")
+			self.main_frame = ctk.CTkFrame(self, fg_color= "transparent")
 			self.main_frame.rowconfigure(0, weight= 1, uniform= "a")
 			self.main_frame.rowconfigure(1, weight= 5, uniform= "a")
 			self.main_frame.columnconfigure(0, weight= 1, uniform= "a")
@@ -63,7 +63,7 @@ class App(ctk.CTk):
 
 		self.entry_field = SimpleEntry(parent= self.main_frame, 
 							entry_variable= self.sp_name, 
-							frame_color= "red", 
+							frame_color= "transparent", 
 							font= self.font, 
 							button_func= self.search_sp)
 		self.entry_field.grid(row= 0, column= 0, rowspan= 1, columnspan= 3, padx= 10, pady= 10, sticky= "ew")
@@ -102,7 +102,7 @@ class App(ctk.CTk):
 	
 	def create_loading_screen(self):	
 		self.loading_frame = ctk.CTkFrame(self.main_frame, fg_color= "transparent")
-		loading_label = ctk.CTkLabel(self.loading_frame, textvariable= self.animation_text, font= self.font, text_color= "black")
+		loading_label = ctk.CTkLabel(self.loading_frame, textvariable= self.animation_text, font= self.font, text_color= WHITE)
 		loading_label.pack(expand= True, fill= "both")
 		self.loading_frame.place(relx= .5, rely= .5, anchor= "center", relheight= 1, relwidth= 1)
 	

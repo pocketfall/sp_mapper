@@ -5,14 +5,22 @@ from matplotlib.figure import Figure
 from mpl_toolkits.basemap import Basemap
 
 class InformationDisplay(ctk.CTkScrollableFrame):
+	"""
+	Scrollable frame that displays information about the species, namely max and min longitude/latitude and
+	the countries it has been spotted in
+	"""
 	def __init__(self, parent, countries: set, lat_range: list[float], lon_range: list[float], font: tuple):
-		super().__init__(master= parent, fg_color= "cyan")
+		super().__init__(master= parent, fg_color= "transparent")
 
 		processed_data = self.preprocess_data(countries, lat_range, lon_range)
 		
-		info_title = ctk.CTkLabel(self, text= "Information", font= font).pack(expand= True, fill= "both")
+		info_title = ctk.CTkLabel(self, text= "Information", font= font).pack(expand= True, fill= "both", pady= 10)
 		for data in processed_data[::-1]:
-			ctk.CTkLabel(self, text= data, font= font).pack(fill= "both", expand= True, pady= 10)
+			if data == processed_data[0]:
+				ctk.CTkLabel(self, text= f"Has been seen in", font= font).pack(fill= "both", expand= True, pady= 10)
+				ctk.CTkLabel(self, text= data, font= font).pack(fill= "both", expand= True)
+			else:
+				ctk.CTkLabel(self, text= data, font= font).pack(fill= "both", expand= True, pady= 10)
 	
 	def preprocess_data(self, countries, lat_range, lon_range) -> tuple[str]:
 		country_processed = "\n".join(list(countries))
@@ -24,7 +32,7 @@ class InformationDisplay(ctk.CTkScrollableFrame):
 
 class SimpleEntry(ctk.CTkFrame):
 	"""
-	Class that creates a frame containing a CTkLabel and a CTkEntry in a row
+	Class that creates a frame containing a CTkLabel, CTkEntry and CTkButton in a row
 	"""
 	def __init__(self, parent, entry_variable, frame_color, font, button_func):
 		super().__init__(master= parent, fg_color= frame_color)
@@ -36,7 +44,7 @@ class MapCanvas(ctk.CTkFrame):
 	"""
 	Class that creates a frame containing a canvas with a Basemap and a scatter plot on the map
 	"""
-	def __init__(self, parent: str, data: dict):
+	def __init__(self, parent, data: dict):
 		super().__init__(master= parent, fg_color= "red")
 		lat, lon = data["decimalLatitude"], data["decimalLongitude"]
 		sp_name = data["scientificName"][0].split(" ")
