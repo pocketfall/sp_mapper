@@ -24,7 +24,6 @@ class InformationDisplay(ctk.CTkScrollableFrame):
 	
 	def preprocess_data(self, countries, lat_range, lon_range) -> tuple[str]:
 		country_processed = "\n".join(list(countries))
-		print(country_processed)
 		lat_processed = f"Maximum latitude: {round(lat_range[1], 2)}\nMinimum latitude: {round(lat_range[0], 2)}"
 		lon_processed = f"Maximum longitude: {round(lon_range[1])}\nMinimum longitude: {round(lon_range[0], 2)}"
 
