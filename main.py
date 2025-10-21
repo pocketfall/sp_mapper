@@ -70,6 +70,17 @@ class App(ctk.CTk):
 		search_thread = Thread(target= thread_func, args= thread_func_args)
 		search_thread.start()
 		return search_thread
+
+	def validate_entry(self, entry_string: str) -> bool:
+		"""
+		Check if entry string is in binomial nomenclature and if
+		it is, check if both parts are only numbers
+		"""
+		work_string = entry_string.lower()
+		string_list = work_string.split()
+		if len(string_list) < 2 or not string_list[0].isalpha() or not string_list[1].isalpha():
+			return False
+		return True
 	
 	def search_sp(self):
 		"""
@@ -77,31 +88,37 @@ class App(ctk.CTk):
 		and create a distribution map if it does not already exist, otherwise delete
 		the existing one before creating another
 		"""
-		# clear screen to display loading frame
-		self.clear_screen()
-		self.create_loading_screen()
+		# check validity of entry string
+		entry_string = self.sp_name.get()
 
-		# search the data using a thread
-		search_thread = self.initiate_search_thread(thread_func= self.thread_search, 
-							  thread_func_args= (self.sp_name.get(), self.thread_return))
+		if self.validate_entry(entry_string):
+			# clear screen to display loading frame
+			self.clear_screen()
+			self.create_loading_screen()
+
+			# search the data using a thread
+			search_thread = self.initiate_search_thread(thread_func= self.thread_search, 
+								  thread_func_args= (entry_string, self.thread_return))
 
 
-		# display loading screen while requesting data
-		while search_thread.is_alive():
-			self.animate()
-		self.loading_frame.destroy()
+			# display loading screen while requesting data
+			while search_thread.is_alive():
+				self.animate()
+			self.loading_frame.destroy()
 
-		# add the widgets again
-		self.create_widgets()
+			# add the widgets again
+			self.create_widgets()
 
-		data = self.thread_return[0]
-		self.frame_idx = 0
+			data = self.thread_return[0]
+			self.frame_idx = 0
 
-		# draw map when data is available
-		self.create_map(parent= self.main_frame, data= data)
+			# draw map when data is available
+			self.create_map(parent= self.main_frame, data= data)
 
-		# add species info to a left panel
-		self.list_info(data)
+			# add species info to a left panel
+			self.list_info(data)
+		else:
+			self.sp_name.set("Invalid name, please try again")
 	
 	def create_map(self, parent, data):
 		distribution_map = MapCanvas(parent= parent, data= data)
