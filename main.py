@@ -27,12 +27,6 @@ class App(ctk.CTk):
 		self.frame_idx = 0
 		self.thread_return = [None] # thread return will get the result of searching while in a thread
 
-		#self.rowconfigure(0, weight= 1, uniform= "a")
-		#self.rowconfigure(1, weight= 5, uniform= "a")
-		#self.columnconfigure((0, 1), weight= 1, uniform= "a")
-		#self.columnconfigure(2, weight= 5, uniform= "a")
-
-		self.map = None
 		self.create_widgets()
 
 		# close window event
@@ -52,6 +46,17 @@ class App(ctk.CTk):
 	def create_widgets(self):
 		# layout
 		# 2x3 where the 3rd column has a weight of 5
+		self.create_main_frame()
+
+
+		self.entry_field = SimpleEntry(parent= self.main_frame, 
+							entry_variable= self.sp_name, 
+							frame_color= "transparent", 
+							font= self.font, 
+							button_func= self.search_sp)
+		self.entry_field.grid(row= 0, column= 0, rowspan= 1, columnspan= 3, padx= 10, pady= 10, sticky= "ew")
+	
+	def create_main_frame(self):
 		if self.main_frame is None:
 			self.main_frame = ctk.CTkFrame(self, fg_color= "transparent")
 			self.main_frame.rowconfigure(0, weight= 1, uniform= "a")
@@ -61,12 +66,10 @@ class App(ctk.CTk):
 			self.main_frame.columnconfigure(2, weight= 5, uniform= "a")
 			self.main_frame.pack(expand= True, fill= "both")
 
-		self.entry_field = SimpleEntry(parent= self.main_frame, 
-							entry_variable= self.sp_name, 
-							frame_color= "transparent", 
-							font= self.font, 
-							button_func= self.search_sp)
-		self.entry_field.grid(row= 0, column= 0, rowspan= 1, columnspan= 3, padx= 10, pady= 10, sticky= "ew")
+	def initiate_search_thread(self, thread_func, thread_func_args: tuple):
+		search_thread = Thread(target= thread_func, args= thread_func_args)
+		search_thread.start()
+		return search_thread
 	
 	def search_sp(self):
 		"""
@@ -79,10 +82,11 @@ class App(ctk.CTk):
 		self.create_loading_screen()
 
 		# search the data using a thread
-		search_thread = Thread(target= self.thread_search, args= (self.sp_name.get(), self.thread_return))
-		search_thread.start()
+		search_thread = self.initiate_search_thread(thread_func= self.thread_search, 
+							  thread_func_args= (self.sp_name.get(), self.thread_return))
 
-		# create a loading screen while requesting data
+
+		# display loading screen while requesting data
 		while search_thread.is_alive():
 			self.animate()
 		self.loading_frame.destroy()
@@ -94,11 +98,14 @@ class App(ctk.CTk):
 		self.frame_idx = 0
 
 		# draw map when data is available
-		self.map = MapCanvas(parent= self.main_frame, data= data)
-		self.map.grid(row= 1, column= 2, padx= 5, pady= 5, sticky= "new")
+		self.create_map(parent= self.main_frame, data= data)
 
 		# add species info to a left panel
 		self.list_info(data)
+	
+	def create_map(self, parent, data):
+		distribution_map = MapCanvas(parent= parent, data= data)
+		distribution_map.grid(row= 1, column= 2, padx= 5, pady= 5, sticky= "new")
 	
 	def create_loading_screen(self):	
 		self.loading_frame = ctk.CTkFrame(self.main_frame, fg_color= "transparent")
@@ -136,10 +143,6 @@ class App(ctk.CTk):
 									font= self.font)
 		self.sp_info.grid(row= 1, column= 0, rowspan= 1, columnspan= 2, sticky= "nsew", padx= 5, pady= 5)
 		
-
-	def clear_info_and_map(self):
-		self.map.destroy()
-		self.sp_info.destroy()
 	
 if __name__ == "__main__":
 	App()
